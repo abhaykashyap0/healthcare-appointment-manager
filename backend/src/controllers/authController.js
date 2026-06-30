@@ -52,4 +52,29 @@ async function getMe(req, res) {
   res.json({ user: req.user.toSafeObject(), ...extra });
 }
 
-module.exports = { register, login, getMe };
+async function changePassword(req, res) {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'currentPassword and newPassword are required' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'newPassword must be at least 6 characters' });
+  }
+
+  // req.user was loaded by the protect middleware; fetch fresh with password field
+  // included is unnecessary since the schema doesn't exclude it by default, but we
+  // re-fetch to be safe against any stale in-request state.
+  const user = await User.findById(req.user._id);
+  const isMatch = await user.comparePassword(currentPassword);
+  if (!isMatch) {
+    return res.status(401).json({ message: 'Current password is incorrect' });
+  }
+
+  user.password = newPassword; // pre-save hook re-hashes this
+  await user.save();
+
+  res.json({ message: 'Password updated successfully' });
+}
+
+module.exports = { register, login, getMe, changePassword };
