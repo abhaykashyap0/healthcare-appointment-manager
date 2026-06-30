@@ -164,10 +164,35 @@ Both prompts live in `backend/src/services/llmService.js`.
 See `docs/system-design.md` for the architectural reasoning behind slot
 conflicts, leave handling, hold expiry, and notification retries.
 
-## 11. Deployment notes
+## 11. Live deployment
+
+| | URL |
+|---|---|
+| **Frontend (Vercel)** | https://healthcare-appointment-manager.vercel.app |
+| **Backend API (Render)** | https://healthcare-appointment-manager.onrender.com |
+| **Health check** | https://healthcare-appointment-manager.onrender.com/api/health |
+
+**Hosting:** frontend on Vercel, backend on Render (free tier), database on MongoDB Atlas (free M0 cluster).
+
+**Note:** the backend free tier spins down after a period of inactivity. The
+first request after idle can take 30–60 seconds to respond while the service
+wakes up — this is expected, not a bug.
+
+**Demo accounts** (seeded for evaluation):
+- Admin: `admin@clinic.com`
+- Sample doctor: `dr.sharma@clinic.com`
+
+Passwords have been rotated from the defaults shown elsewhere in this repo's
+history for security; request current credentials separately if needed for
+grading, or register a new patient account directly via the **Register** page
+to test the full booking flow end to end.
+
+## 12. Deployment notes (for redeploying elsewhere)
 
 - Set `NODE_ENV=production` and a strong `JWT_SECRET` in production.
 - Use a managed MongoDB (Atlas) and update `MONGO_URI`.
 - Update `GOOGLE_REDIRECT_URI` and the OAuth client's authorized redirect URI to your deployed backend URL.
 - Update `CLIENT_URL` in the backend `.env` to your deployed frontend URL (used for CORS and OAuth redirects).
 - Update `REACT_APP_API_URL` in the frontend `.env` to your deployed backend URL before running `npm run build`.
+- For hosts without shell access (e.g. Render free tier), use the one-time `POST /api/auth/seed` endpoint (protected by a `SEED_KEY` env var) instead of running `npm run seed` directly — see `backend/src/routes/authRoutes.js`. Remove `SEED_KEY` after use.
+
