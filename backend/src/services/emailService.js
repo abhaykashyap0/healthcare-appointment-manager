@@ -1,40 +1,40 @@
-const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
 
-let transporter;
-
-function getTransporter() {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-  return transporter;
-}
-
 /**
- * Sends an email. Never throws — returns { success, error } so callers
- * (controllers and the retry job) can record notification status without
- * the request/job crashing on an email outage.
+ * Sends email via Brevo (formerly Sendinblue) HTTP API.
+ * Works on Render free tier, sends to any email address without domain verification.
+ * Free tier: 300 emails/day.
  */
 async function sendEmail({ to, subject, html, text }) {
   try {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      throw new Error('SMTP credentials not configured');
-    }
-    await getTransporter().sendMail({
-      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-      to,
-      subject,
-      html,
-      text: text || html.replace(/<[^>]+>/g, ''),
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!apiKey) throw new Error('BREVO_API_KEY is not configured');
+
+    const fromEmail = process.env.EMAIL_FROM_ADDRESS || process.env.BREVO_SENDER_EMAIL;
+    const fromName = process.env.EMAIL_FROM_NAME || 'Clinic Appointments';
+
+    if (!fromEmail) throw new Error('BREVO_SENDER_EMAIL is not configured');
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromEmail },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html || `<p>${text || ''}</p>`,
+      }),
     });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Brevo API error ${response.status}: ${err}`);
+    }
+
     logger.info(`Email sent to ${to}: ${subject}`);
     return { success: true };
   } catch (err) {
@@ -46,23 +46,60 @@ async function sendEmail({ to, subject, html, text }) {
 const templates = {
   bookingConfirmation: ({ name, doctorName, slotStart }) => ({
     subject: 'Appointment Confirmed',
-    html: `<p>Hi ${name},</p><p>Your appointment with Dr. ${doctorName} on <b>${new Date(slotStart).toLocaleString()}</b> is confirmed.</p><p>You will receive a reminder closer to the time.</p>`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:auto">
+        <h2 style="color:#2F6F5E">Appointment Confirmed</h2>
+        <p>Hi ${name},</p>
+        <p>Your appointment with <strong>Dr. ${doctorName}</strong> on <strong>${new Date(slotStart).toLocaleString()}</strong> is confirmed.</p>
+        <p>You will receive a reminder closer to the time. Please arrive a few minutes early.</p>
+        <p style="color:#888;font-size:13px">Clinic Connect — Healthcare Appointment Manager</p>
+      </div>`,
   }),
   doctorBookingNotice: ({ doctorName, patientName, slotStart }) => ({
     subject: 'New Appointment Booked',
-    html: `<p>Hi Dr. ${doctorName},</p><p>${patientName} has booked an appointment with you on <b>${new Date(slotStart).toLocaleString()}</b>.</p>`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:auto">
+        <h2 style="color:#2F6F5E">New Appointment</h2>
+        <p>Hi Dr. ${doctorName},</p>
+        <p><strong>${patientName}</strong> has booked an appointment with you on <strong>${new Date(slotStart).toLocaleString()}</strong>.</p>
+        <p>Log in to view the patient's pre-visit symptom summary before the appointment.</p>
+        <p style="color:#888;font-size:13px">Clinic Connect — Healthcare Appointment Manager</p>
+      </div>`,
   }),
   reminder: ({ name, doctorName, slotStart }) => ({
     subject: 'Appointment Reminder',
-    html: `<p>Hi ${name},</p><p>Reminder: your appointment with Dr. ${doctorName} is on <b>${new Date(slotStart).toLocaleString()}</b>.</p>`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:auto">
+        <h2 style="color:#2F6F5E">Appointment Reminder</h2>
+        <p>Hi ${name},</p>
+        <p>This is a reminder that your appointment with <strong>Dr. ${doctorName}</strong> is coming up on <strong>${new Date(slotStart).toLocaleString()}</strong>.</p>
+        <p>Please arrive a few minutes early and bring any relevant documents or previous prescriptions.</p>
+        <p style="color:#888;font-size:13px">Clinic Connect — Healthcare Appointment Manager</p>
+      </div>`,
   }),
   cancellation: ({ name, doctorName, slotStart, reason }) => ({
-    subject: 'Appointment Cancelled',
-    html: `<p>Hi ${name},</p><p>Your appointment with Dr. ${doctorName} on <b>${new Date(slotStart).toLocaleString()}</b> has been cancelled.${reason ? ` Reason: ${reason}` : ''}</p>`,
+    subject: 'Appointment Cancelled — Please Rebook',
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:auto">
+        <h2 style="color:#B3463B">Appointment Cancelled</h2>
+        <p>Hi ${name},</p>
+        <p>We're sorry, but your appointment with <strong>Dr. ${doctorName}</strong> on <strong>${new Date(slotStart).toLocaleString()}</strong> has been cancelled.</p>
+        ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+        <p>Please visit our platform to <strong>book a new appointment</strong> on another available date. We apologise for the inconvenience.</p>
+        <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/doctors" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#2F6F5E;color:white;border-radius:6px;text-decoration:none;font-weight:bold">Book a new appointment</a>
+        <p style="color:#888;font-size:13px;margin-top:20px">Clinic Connect — Healthcare Appointment Manager</p>
+      </div>`,
   }),
   medicationReminder: ({ name, medicationName, dosage }) => ({
     subject: 'Medication Reminder',
-    html: `<p>Hi ${name},</p><p>This is a reminder to take your medication: <b>${medicationName}</b> (${dosage}).</p>`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:auto">
+        <h2 style="color:#2F6F5E">Medication Reminder</h2>
+        <p>Hi ${name},</p>
+        <p>This is a reminder to take your medication: <strong>${medicationName}</strong> (${dosage}).</p>
+        <p>If you have any concerns about your medication, please contact your doctor.</p>
+        <p style="color:#888;font-size:13px">Clinic Connect — Healthcare Appointment Manager</p>
+      </div>`,
   }),
 };
 

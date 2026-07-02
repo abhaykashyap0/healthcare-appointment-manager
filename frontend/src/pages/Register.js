@@ -9,9 +9,7 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  function update(field) {
-    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
-  }
+  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -28,36 +26,56 @@ export default function Register() {
   }
 
   return (
-    <div className="page" style={{ maxWidth: 420 }}>
-      <h1>Create your patient account</h1>
-      <p className="muted">Book appointments, share symptoms in advance, and get reminders.</p>
-      <div className="card">
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="name">Full name</label>
-            <input id="name" required value={form.name} onChange={update('name')} />
-          </div>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" required value={form.email} onChange={update('email')} />
-          </div>
-          <div className="form-group">
-            <label htmlFor="phone">Phone</label>
-            <input id="phone" value={form.phone} onChange={update('phone')} />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input id="password" type="password" required minLength={6} value={form.password} onChange={update('password')} />
-          </div>
-          {error && <p className="error-text">{error}</p>}
-          <button className="btn" type="submit" disabled={submitting}>
-            {submitting ? 'Creating account…' : 'Create account'}
-          </button>
-        </form>
+    <div className="auth-shell">
+      <div className="auth-left">
+        <div className="auth-brand">✚ Clinic Connect</div>
+        <div className="auth-hero">
+          <h2>Your health, managed end-to-end.</h2>
+          <p>Book appointments, describe symptoms in advance, receive AI summaries, and get prescription reminders — all in one place.</p>
+        </div>
+        <div className="auth-features">
+          {['Book any available slot instantly', 'AI-powered pre-visit briefings', 'Post-visit summaries in plain language', 'Medication reminders by email'].map((f) => (
+            <div className="auth-feature" key={f}>
+              <span className="auth-feature-dot" /> {f}
+            </div>
+          ))}
+        </div>
       </div>
-      <p className="muted">
-        Already have an account? <Link to="/login">Log in</Link>
-      </p>
+
+      <div className="auth-right">
+        <div className="auth-form-wrap">
+          <h1>Create your account</h1>
+          <p className="auth-sub">Patient accounts only. Doctor accounts are created by clinic admin.</p>
+
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Full name</label>
+              <input required value={form.name} onChange={update('name')} placeholder="Jane Smith" />
+            </div>
+            <div className="form-group">
+              <label>Email address</label>
+              <input type="email" required value={form.email} onChange={update('email')} placeholder="you@example.com" />
+            </div>
+            <div className="form-group">
+              <label>Phone number</label>
+              <input value={form.phone} onChange={update('phone')} placeholder="+91 98765 43210" />
+            </div>
+            <div className="form-group">
+              <label>Password</label>
+              <input type="password" required minLength={6} value={form.password} onChange={update('password')} placeholder="Min. 6 characters" />
+            </div>
+            {error && <p className="error-text">{error}</p>}
+            <button className="btn btn-lg" type="submit" disabled={submitting}
+              style={{ width: '100%', marginTop: 6 }}>
+              {submitting ? 'Creating account…' : 'Create account'}
+            </button>
+          </form>
+
+          <p className="muted" style={{ marginTop: 20, textAlign: 'center' }}>
+            Already have an account? <Link to="/login">Sign in</Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
