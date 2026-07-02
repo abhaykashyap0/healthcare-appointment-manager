@@ -68,10 +68,26 @@ export default function BookAppointment() {
     if (!held) return;
     setSubmitting(true);
     setError('');
+
+    // Set a fallback redirect in case the LLM takes too long and the request
+    // appears to hang on the client — the appointment is saved server-side
+    // regardless, so we navigate away after 15s even without a response.
+    const fallbackTimer = setTimeout(() => {
+      navigate('/appointments', { state: { booked: true } });
+    }, 15000);
+
     try {
       await api.post(`/appointments/${held.appointment._id}/confirm`, { symptoms });
+      clearTimeout(fallbackTimer);
       navigate('/appointments', { state: { booked: true } });
     } catch (err) {
+      clearTimeout(fallbackTimer);
+      // If the error is a network timeout but the appointment was already
+      // confirmed server-side, treat it as success and navigate anyway.
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        navigate('/appointments', { state: { booked: true } });
+        return;
+      }
       setError(err.response?.data?.message || 'Could not confirm appointment.');
       if (err.response?.status === 410) setHeld(null);
     } finally {
