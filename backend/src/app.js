@@ -13,6 +13,8 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+app.set('trust proxy', 1); // trust Render/Vercel/Railway reverse proxy
+
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
 app.use(express.json());
