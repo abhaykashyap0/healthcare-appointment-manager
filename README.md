@@ -5,8 +5,8 @@ Patients book appointments and share symptoms in advance; doctors get an AI
 pre-visit summary and produce a post-visit summary for the patient; both sides
 get email and Google Calendar updates throughout.
 
-**Stack:** Node.js (Express) + React, MongoDB, Anthropic Claude for LLM
-summaries, Nodemailer for email, Google Calendar API (OAuth 2.0).
+**Stack:** Node.js (Express) + React, MongoDB, groq for LLM
+summaries, Brevo.com for email, Google Calendar API (OAuth 2.0).
 
 ---
 
@@ -46,8 +46,8 @@ healthcare-appointment-manager/
 
 - Node.js 18+
 - MongoDB (local install or a free Atlas cluster)
-- An Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
-- An SMTP account for sending email (Gmail App Password, SendGrid SMTP, Mailgun SMTP, or Nodemailer-compatible provider)
+- A Groq API key ([console.groq.com](https://console.groq.com))
+- A Brevo account for sending email 
 - A Google Cloud project with the Calendar API enabled (for Calendar sync)
 
 ## 3. Backend setup
@@ -83,9 +83,9 @@ npm start      # starts the app on http://localhost:3000
 |---|---|
 | `MONGO_URI` | MongoDB connection string |
 | `JWT_SECRET` | Secret for signing auth tokens — use a long random string |
-| `ANTHROPIC_API_KEY` | Claude API key for pre/post-visit summaries |
-| `ANTHROPIC_MODEL` | Defaults to `claude-sonnet-4-6` |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | Email provider credentials |
+| `GROQ_API_KEY` | Groq API key for pre/post-visit summaries |
+| `GROQ_MODEL` | Defaults to `llama-3.1-8b-instant` |
+|  Email provider credentials |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | Google OAuth credentials |
 | `SLOT_HOLD_TTL_MINUTES` | How long a slot stays reserved while the patient fills the symptom form (default 5) |
 | `REMINDER_CRON` / `EMAIL_RETRY_CRON` | Cron schedules for background jobs |
